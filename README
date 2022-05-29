@@ -1,4 +1,10 @@
 
+FORKED FROM [apache/guacamole](https://github.com/apache/guacamole-server)
+
+This fork has changes made to the Docker build in order to support ECDSA and ED25519 ssh keys using a compiled libssh2 (v1.10.0)
+
+The docker image built from this code can be found on Docker Hub under (kierenhamps/guacd)[https://hub.docker.com/r/kierenhamps/guacd]
+
 ------------------------------------------------------------
  About this README
 ------------------------------------------------------------

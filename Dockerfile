@@ -50,7 +50,6 @@ RUN grep " ${DEBIAN_RELEASE} " /etc/apt/sources.list || echo >> /etc/apt/sources
 ARG PREFIX_DIR=/usr/local/guacamole
 
 # Build arguments
-ARG BUILD_DIR=/tmp/guacd-docker-BUILD
 ARG BUILD_DEPENDENCIES="              \
         autoconf                      \
         automake                      \
@@ -62,14 +61,15 @@ ARG BUILD_DEPENDENCIES="              \
         libossp-uuid-dev              \
         libpango1.0-dev               \
         libpulse-dev                  \
-        libssh2-1-dev                 \
         libssl-dev                    \
         libtelnet-dev                 \
         libtool                       \
         libvncserver-dev              \
         libwebsockets-dev             \
         libwebp-dev                   \
-        make"
+        make                          \
+        curl                          \
+        openssl"
 
 # Do not require interaction during build
 ARG DEBIAN_FRONTEND=noninteractive
@@ -78,6 +78,18 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update                                              && \
     apt-get install -t ${DEBIAN_RELEASE} -y $BUILD_DEPENDENCIES && \
     rm -rf /var/lib/apt/lists/*
+
+
+# Build Libssh manually to get latest version
+RUN curl -SLO "https://github.com/libssh2/libssh2/releases/download/libssh2-1.10.0/libssh2-1.10.0.tar.gz" \
+  && tar -xzf libssh2-1.10.0.tar.gz \
+  && cd libssh2-1.10.0 \
+  && ./configure  \
+  && make -j$(getconf _NPROCESSORS_ONLN) \
+  && make install \
+  && cd .. \
+  && rm -rf libssh2-1.10.0.tar.gz libssh2-1.10.0 \
+  && ldconfig
 
 # Add configuration scripts
 COPY src/guacd-docker/bin "${PREFIX_DIR}/bin/"
@@ -93,6 +105,7 @@ RUN ${PREFIX_DIR}/bin/list-dependencies.sh     \
         ${PREFIX_DIR}/sbin/guacd               \
         ${PREFIX_DIR}/lib/libguac-client-*.so  \
         ${PREFIX_DIR}/lib/freerdp2/*guac*.so   \
+        /usr/local/lib/libssh2.so              \
         > ${PREFIX_DIR}/DEPENDENCIES
 
 # Use same Debian as the base for the runtime image
@@ -139,6 +152,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Copy build artifacts into this stage
 COPY --from=builder ${PREFIX_DIR} ${PREFIX_DIR}
+COPY --from=builder /usr/local/lib/libssh2.so /usr/local/lib/
 
 # Bring runtime environment up to date and install runtime dependencies
 RUN apt-get update                                                                                       && \
